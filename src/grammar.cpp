@@ -1,0 +1,173 @@
+#include "grammar.hpp"
+#include <string>
+
+Grammar::Grammar(std::set<char> variables, std::set<char> terminals, char start)
+    : variables_(std::move(variables)), terminals_(std::move(terminals)), start_(start)
+{
+    if (variables_.empty())
+        throw GrammarError("Variable set can't be empty.");
+
+    for (char c : variables_)
+    {
+        if (terminals_.count(c))
+        {
+            throw GrammarError("The same symbol was found in both the set of variables and the set of terminals.");
+        }
+    }
+
+    if (variables_.find(start_) == variables_.end())
+        throw GrammarError("The set of variables doesn't include the starting variable.");
+}
+
+const std::map<char, std::set<std::string>> &Grammar::rules() const
+{
+    return rules_;
+}
+
+// Epsilon is represented as '#' in text and as an empty string "" internally
+void Grammar::addRule(char lhs, const std::string &rhs)
+{
+    if (variables_.count(lhs) == 0)
+    {
+        throw GrammarError("The variable on the left-hand side is not in the set of variables.");
+    }
+
+    if (!rhs.empty())
+    {
+        for (char c : rhs)
+        {
+            if (variables_.count(c) == 0 && terminals_.count(c) == 0)
+            {
+                throw GrammarError("The variable/terminal: " + std::string(1, c) + " was not found in the set of variables or the set of terminals.");
+            }
+        }
+    }
+
+    if (!rules_[lhs].insert(rhs).second)
+        throw GrammarError("The rule already exists.");
+}
+
+// freshVariables provide new variables in case the CNF conversion needs new variables
+// It gets them from the pool of capital letters that are not yet used by the current rules set.
+char Grammar::freshVariable() const
+{
+    for (char c = 'A'; c <= 'Z'; ++c)
+    {
+        if (!variables_.count(c) && !terminals_.count(c))
+        {
+            return c;
+        }
+    }
+}
+
+void Grammar::addStartVariable()
+{
+    char ogStart = start_;
+    start_ = freshVariable();
+    addRule(start_, std::string(1, ogStart));
+}
+
+/*
+First step is eliminating the epsilon rules and keeping track of all nullable variables and LHS variables
+whose rules were removed.
+set<char> nullableVariables keeps track of all nullable variables over the whole grammar; persistent
+set<char> removed keeps track of all LHS whose epsilon rules were removed, so that, when adding the
+new rules, we avoid adding the same epsilon unit rule again.
+Second step: 1. Collecting all rules that need to be added to compensate for the removed epsilon rules
+map<char, set<string>> additions keep track of all the rules to be added with their LHS variable
+set<char> targetsInRule used to collect nullable variables in a single rule to pass to getAllOccurences()
+which gets all combinations of this rule after removing each occurence of all variables together.
+set<string> addedRhs stores all the occurences returned by getAllOccurences() to be stored in additions
+All of these steps are repeated as long as changedSomething is true (if something is changed in the grammar)
+*/
+void Grammar::eliminateEpsilonRules()
+{
+    bool changedSomething = true;
+    std::set<char> nullableVariables = {}; // To collect all nullable variables over the whole grammar
+    while (changedSomething)
+    {
+        changedSomething = false;
+        // First step: eliminate the epsilon rules and keep track of the variables that had these rules
+        std::set<char> removed; // To keep track of the removed unit epsilon rules and avoid adding them again
+        for (auto &[key, inner_set] : rules_)
+        {
+            if (key != start_ && inner_set.erase("") > 0) // Only remove the epsilon rules
+            {
+                changedSomething = true;
+                nullableVariables.insert(key);
+                removed.insert(key);
+            }
+        }
+
+        if (!changedSomething)
+            continue;
+
+        // Second step, replace the occurences of these variables
+        // First, collect all of the rules that should be added
+        std::map<char, std::set<std::string>> additions; // Another map to collect all of the rules to be added, by LHS
+        for (auto &[lhs, inner_set] : rules_)
+        {
+            for (const std::string &rhs : inner_set)
+            {
+                if (rhs.length() == 1 && nullableVariables.count(rhs[0]) != 0 && removed.count(lhs) != 0) // Avoids adding unit epsilon rules that were already removed
+                    continue;
+
+                std::set<char> targetsInRule; // A set to collect all of the nullable variables in a single rule
+                for (char c : rhs)
+                    if (nullableVariables.count(c) != 0)
+                        targetsInRule.insert(c);
+
+                if (targetsInRule.empty()) // No nullable variables appear
+                    continue;
+
+                std::set<std::string> addedRhs = getAllOccurences(rhs, targetsInRule);
+                additions[lhs].insert(addedRhs.begin(), addedRhs.end());
+            }
+        }
+
+        // Then, add all of the rules in their respective places
+        for (const auto &pair : additions)
+            rules_[pair.first].insert(pair.second.begin(), pair.second.end());
+    }
+}
+
+std::set<std::string> Grammar::getAllOccurences(std::string rhs, const std::set<char> &targets)
+{
+    std::set<std::string> results = {};
+    getAllOcurrencesRecursive(rhs, targets, 0, "", results);
+    return results;
+}
+
+// The recursive function iterates over the string to get all combinations of removal of the variable from the RHS of the rule
+// It gets the combinations by building up strings starting from an empty string and inserting them all in a set @results that it returns
+void Grammar::getAllOcurrencesRecursive(const std::string &str, const std::set<char> &targets, int index, std::string current, std::set<std::string> &results)
+{
+    // Base case, we have reached the end of the string
+    if (index == str.length())
+    {
+        if (current != str)
+        {
+            results.insert(current);
+        }
+        return;
+    }
+
+    if (targets.count(str[index]) != 0)
+    {
+        // Since we encountered the variable we want to remove, we have two choices at each encounter.
+        // The first one is to include the target and keep iterating
+        getAllOcurrencesRecursive(str, targets, index + 1, current + str[index], results);
+
+        // The second choice is to not include the target and keep iterating
+        getAllOcurrencesRecursive(str, targets, index + 1, current, results);
+    }
+    else
+    {
+        // If the character encountered is not the target, we always incldue it
+        getAllOcurrencesRecursive(str, targets, index + 1, current + str[index], results);
+    }
+}
+
+Grammar Grammar::CNFConvert() const
+{
+}
