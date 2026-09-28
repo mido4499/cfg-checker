@@ -25,6 +25,7 @@ public:
     const std::map<char, std::set<std::string>> &rules() const;
 
     Grammar CNFConvert() const;
+    void eliminateEpsilonRules();
 
 private:
     std::set<char> variables_;
@@ -33,7 +34,6 @@ private:
     std::map<char, std::set<std::string>> rules_;
 
     void addStartVariable();
-    void eliminateEpsilonRules();
     std::set<std::string> getAllOccurences(std::string rhs, const std::set<char> &targets);
     void getAllOcurrencesRecursive(const std::string &str, const std::set<char> &targets, int index, std::string current, std::set<std::string> &results);
     void eliminateUnitRules();

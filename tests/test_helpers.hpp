@@ -30,3 +30,15 @@ inline void expectNoThrow(const std::string &name, std::function<void()> fn)
         failures++;
     }
 }
+
+inline void expectRules(const std::string &name, const Grammar &g,
+                        const std::map<char, std::set<std::string>> &expected)
+{
+    if (g.rules() == expected)
+        std::cout << "PASS: " << name << '\n';
+    else
+    {
+        std::cout << "FAIL: " << name << '\n';
+        failures++;
+    }
+}

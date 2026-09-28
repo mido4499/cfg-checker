@@ -1,7 +1,52 @@
 #include "../src/grammar.hpp"
 #include "test_helpers.hpp"
 
-int main()
+void testEliminateEpsilonRules()
+{
+    // T1 No epsilon rules
+    Grammar g({'S', 'A'}, {'a'}, 'S');
+    g.addRule('S', "aA");
+    g.addRule('A', "a");
+    g.eliminateEpsilonRules();
+    expectRules("no epsilon rules", g, {{'S', {"aA"}}, {'A', {"a"}}});
+
+    // T2 Basic removal
+    Grammar g2({'S', 'A', 'B'}, {'a', 'b'}, 'S');
+    g2.addRule('S', "AB");
+    g2.addRule('A', "a");
+    g2.addRule('A', "");
+    g2.addRule('B', "b");
+    g2.eliminateEpsilonRules();
+    expectRules("basic removal", g2, {{'S', {"AB", "B"}}, {'A', {"a"}}, {'B', {"b"}}});
+
+    // T3 Two occurences of the same nullable variable
+    Grammar g3({'S', 'A'}, {'a', 'b'}, 'S');
+    g3.addRule('S', "AbA");
+    g3.addRule('A', "a");
+    g3.addRule('A', "");
+    g3.eliminateEpsilonRules();
+    expectRules("two occurences of the same nullable variable", g3, {{'S', {"AbA", "bA", "Ab", "b"}}, {'A', {"a"}}});
+
+    // T4 Two different nullable variables in one rule
+    Grammar g4({'S', 'A', 'X'}, {'x', 'a'}, 'S');
+    g4.addRule('S', "AXA");
+    g4.addRule('A', "a");
+    g4.addRule('A', "");
+    g4.addRule('X', "x");
+    g4.addRule('X', "");
+    g4.eliminateEpsilonRules();
+    expectRules("two different nullable variables", g4, {{'S', {"AXA", "AX", "AA", "A", "XA", "X", ""}}, {'A', {"a"}}, {'X', {"x"}}});
+
+    // T5 Chain propagation across rounds
+    Grammar g5({'S', 'A', 'B'}, {}, 'S');
+    g5.addRule('S', "A");
+    g5.addRule('A', "B");
+    g5.addRule('B', "");
+    g5.eliminateEpsilonRules();
+    expectRules("chain propagation across rounds", g5, {{'S', {"A", ""}}, {'A', {"B"}}, {'B', {}}});
+}
+
+void testGrammarClass()
 {
     // Grammar Constructor
     expectNoThrow("valid grammar", []
@@ -46,4 +91,8 @@ int main()
         }
         std::cout << '\n';
     }
+}
+int main()
+{
+    testEliminateEpsilonRules();
 }

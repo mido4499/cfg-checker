@@ -58,6 +58,8 @@ char Grammar::freshVariable() const
             return c;
         }
     }
+    throw GrammarError("No more characters found.");
+    return '!';
 }
 
 void Grammar::addStartVariable()
@@ -143,7 +145,7 @@ std::set<std::string> Grammar::getAllOccurences(std::string rhs, const std::set<
 void Grammar::getAllOcurrencesRecursive(const std::string &str, const std::set<char> &targets, int index, std::string current, std::set<std::string> &results)
 {
     // Base case, we have reached the end of the string
-    if (index == str.length())
+    if (index == static_cast<int>(str.length()))
     {
         if (current != str)
         {
@@ -165,6 +167,72 @@ void Grammar::getAllOcurrencesRecursive(const std::string &str, const std::set<c
     {
         // If the character encountered is not the target, we always incldue it
         getAllOcurrencesRecursive(str, targets, index + 1, current + str[index], results);
+    }
+}
+
+void Grammar::eliminateUnitRules()
+{
+    bool changedSomething = true;
+    std::map<char, std::set<char>> removedUnits;
+    while (changedSomething)
+    {
+        changedSomething = false;
+        // First step: Collect all LHS and RHS that need to be removed.
+        std::map<char, std::set<char>> toRemove;
+        for (const auto &[lhs, alternatives] : rules_)
+            for (const std::string &rule : alternatives)
+                // Find any A->B and add them to toRemove
+                if (rule.length() == 1 && variables_.count(rule[0]) > 0)
+                {
+                    changedSomething = true;
+                    toRemove[lhs].insert(rule[0]);
+                }
+
+        if (!changedSomething)
+            break;
+
+        // Second step: Collect all rules to add
+        std::map<char, std::set<std::string>> toAdd;
+        for (const auto &[lhs, rhs] : toRemove)
+        {
+            // Find all B->u
+            // The iterator lhs here is A and rhs is all B's
+            // Get all the alternatives for B in rules_ and add them to A in toAdd
+            // Copy the alternatives of B to A in toAdd
+            for (char c : rhs)
+            {
+                if (c == lhs)
+                    continue; // Would be a meaningless cycle
+                const auto &src = rules_[c];
+                toAdd[lhs].insert(src.begin(), src.end());
+            }
+        }
+
+        // Third step: Remove all the unit rules
+        for (const auto &[lhs, rhs] : toRemove)
+            // Iterate over A->B in toRemove and delete B from A in rules_
+            for (char c : rhs)
+                rules_[lhs].erase(std::string(1, c));
+
+        // Record them for later cycles
+        for (const auto &[lhs, targets] : toRemove)
+            removedUnits[lhs].insert(targets.begin(), targets.end());
+
+        // Fourth step: Remove all the unit rules that were already removed from the toAdd collection
+        for (auto &[lhs, alternatives] : removedUnits)
+        {
+            auto it = toAdd.find(lhs);
+            if (it == toAdd.end())
+                continue;
+            for (char c : alternatives)
+                it->second.erase(std::string(1, c));
+        }
+
+        // Fifth step: Add the rules
+        for (const auto &[lhs, alternatives] : toAdd)
+            // Iterator lhs here is A
+            // Add all the alternatives copied from B to the alternatives of A
+            rules_[lhs].insert(alternatives.begin(), alternatives.end());
     }
 }
 
