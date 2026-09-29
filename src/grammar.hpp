@@ -23,9 +23,10 @@ public:
     const std::set<char> terminals() const;
     char startSymbol() const;
     const std::map<char, std::set<std::string>> &rules() const;
+    void eliminateUnitRules();
+    void eliminateEpsilonRules();
 
     Grammar CNFConvert() const;
-    void eliminateEpsilonRules();
 
 private:
     std::set<char> variables_;
@@ -34,9 +35,11 @@ private:
     std::map<char, std::set<std::string>> rules_;
 
     void addStartVariable();
+    void breakLongRules();
     std::set<std::string> getAllOccurences(std::string rhs, const std::set<char> &targets);
     void getAllOcurrencesRecursive(const std::string &str, const std::set<char> &targets, int index, std::string current, std::set<std::string> &results);
-    void eliminateUnitRules();
     void breakLongRules();
-    char freshVariable() const;
+    char freshVariable();
+    bool isTerminal(char c) const;
+    bool isVariable(char c) const;
 };

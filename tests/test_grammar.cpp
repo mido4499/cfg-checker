@@ -1,6 +1,47 @@
 #include "../src/grammar.hpp"
 #include "test_helpers.hpp"
 
+void testEliminateUnitRules()
+{
+    // No unit rules
+    Grammar g({'S', 'A'}, {'a'}, 'S');
+    g.addRule('S', "aA");
+    g.addRule('A', "a");
+    g.eliminateUnitRules();
+    expectRules("no unit rules", g, {{'S', {"aA"}}, {'A', {"a"}}});
+
+    // Single Unit Rule
+    Grammar g2({'S', 'A'}, {'a'}, 'S');
+    g2.addRule('S', "A");
+    g2.addRule('A', "a");
+    g2.eliminateUnitRules();
+    expectRules("no unit rules", g2, {{'S', {"a"}}, {'A', {"a"}}});
+
+    // Chain with multiple rounds
+    Grammar g3({'S', 'A', 'B'}, {'a'}, 'S');
+    g3.addRule('S', "A");
+    g3.addRule('A', "B");
+    g3.addRule('B', "a");
+    g3.eliminateUnitRules();
+    expectRules("chain propagation", g3, {{'S', {"a"}}, {'A', {"a"}}, {'B', {"a"}}});
+
+    // Multiple unit rules with one LHS variable
+    Grammar g4({'S', 'A', 'B'}, {'a', 'b'}, 'S');
+    g4.addRule('S', "A");
+    g4.addRule('S', "B");
+    g4.addRule('A', "a");
+    g4.addRule('B', "b");
+    g4.eliminateUnitRules();
+    expectRules("multiple unit rules with one LHS", g4, {{'S', {"a", "b"}}, {'A', {"a"}}, {'B', {"b"}}});
+
+    // Self-loop
+    Grammar g5({'S'}, {'a'}, 'S');
+    g5.addRule('S', "S");
+    g5.addRule('S', "a");
+    g5.eliminateUnitRules();
+    expectRules("Self loop", g5, {{'S', {"a"}}});
+}
+
 void testEliminateEpsilonRules()
 {
     // T1 No epsilon rules
@@ -94,5 +135,5 @@ void testGrammarClass()
 }
 int main()
 {
-    testEliminateEpsilonRules();
+    testEliminateUnitRules();
 }

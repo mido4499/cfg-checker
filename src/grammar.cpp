@@ -49,12 +49,13 @@ void Grammar::addRule(char lhs, const std::string &rhs)
 
 // freshVariables provide new variables in case the CNF conversion needs new variables
 // It gets them from the pool of capital letters that are not yet used by the current rules set.
-char Grammar::freshVariable() const
+char Grammar::freshVariable()
 {
     for (char c = 'A'; c <= 'Z'; ++c)
     {
         if (!variables_.count(c) && !terminals_.count(c))
         {
+            variables_.insert(c);
             return c;
         }
     }
@@ -236,6 +237,79 @@ void Grammar::eliminateUnitRules()
     }
 }
 
+/*
+    This function will perform two steps:
+    1. Terminal Cleanup: Break up the rules that contain more than one terminal on the RHS
+    by creating a chain of new variables for every terminal so that the RHS only contains
+    variables.
+    2. Variable Cleanup: After the long rules only contain variables next to each other,
+    break up these rules to a chain so that each rule contains at most two variables
+*/
+void Grammar::breakLongRules()
+{
+    // First step: Collect all long rules
+    // longRules contains all rules in focus, including rules that need terminal cleanup (k>=2)
+    // and rules that need to be broken down to chains (k>=3).
+    std::map<char, std::set<std::string>> longRules;
+    std::map<char, char> terminalToVariable; // Lookup table for variables assigned to terminals when cleaning up terminals
+
+    for (const auto &[lhs, alternatives] : rules_)
+        for (const auto &alternative : alternatives)
+            if (alternative.length() >= 2)
+                longRules[lhs].insert(alternative);
+
+    for (const auto &[lhs, alternatives] : longRules)
+    {
+        for (const auto &alternative : alternatives)
+        {
+            std::string cleaned; // The rule produced after cleaning up terminals
+            for (char c : alternative)
+            {
+                if (terminals_.count(c)) // If this is a terminal, it needs cleanup
+                {
+                    if (terminalToVariable.find(c) == terminalToVariable.end()) // If this is a terminal we didn't encounter before
+                    {
+                        char u = freshVariable();            // Assign a variable to this terminal
+                        terminalToVariable[c] = u;           // Record the variable
+                        rules_[u].insert(std::string(1, c)); // Add a rule for the variable -> terminal
+                    }
+                    cleaned += terminalToVariable[c];
+                }
+                else
+                    cleaned += c; // Add the variable to cleaned, gradually forming the new rule
+            }
+            rules_[lhs].erase(alternative); // Remove the original rule after cleaning it
+
+            int k = cleaned.length();
+            if (k >= 3)
+            {
+                char lhsVariable = lhs;            // Assign variables of the new rule
+                for (size_t i = 0; i < k - 2; ++i) // Iterate over the long rule to break them down
+                {
+                    char rhsVariable = freshVariable(); // Generate a new rhsVariable
+                    rules_[lhsVariable].insert(std::string(1, cleaned[i]) + rhsVariable);
+                    lhsVariable = rhsVariable; // Pass the RHS variable to the next rule in the chain
+                }
+                rules_[lhsVariable].insert(cleaned.substr(k - 2)); // Insert the last two terminals at the last rule in the chain since two terminals are allowed
+            }
+            else // The rule doesn't need variable cleanup
+            {
+                rules_[lhs].insert(cleaned);
+            }
+        }
+    }
+}
+
 Grammar Grammar::CNFConvert() const
 {
+}
+
+// Helper methods to differentiate between terminals (lowercase) and variables (uppercase)
+bool Grammar::isTerminal(char c) const
+{
+    return (c < 'z' && c > 'a');
+}
+bool Grammar::isVariable(char c) const
+{
+    return (c < 'Z' && c > 'A');
 }
