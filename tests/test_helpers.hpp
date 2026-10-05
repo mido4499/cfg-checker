@@ -42,3 +42,28 @@ inline void expectRules(const std::string &name, const Grammar &g,
         failures++;
     }
 }
+
+inline void printRules(Grammar &g)
+{
+    for (auto const &[variable, alternatives] : g.rules())
+    {
+        size_t index = 0;
+        std::cout << variable << ": ";
+        for (auto const &alternative : alternatives)
+        {
+            if (index != 0)
+                std::cout << '|';
+            if (alternative == "")
+                std::cout << '#';
+            std::cout << alternative;
+            index++;
+        }
+
+        std::cout << std::endl;
+    }
+}
+
+inline void printStartVariable(Grammar &g)
+{
+    std::cout << g.startSymbol() << '\n';
+}

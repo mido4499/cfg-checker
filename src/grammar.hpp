@@ -23,10 +23,9 @@ public:
     const std::set<char> terminals() const;
     char startSymbol() const;
     const std::map<char, std::set<std::string>> &rules() const;
-    void eliminateUnitRules();
-    void eliminateEpsilonRules();
 
     Grammar CNFConvert() const;
+    bool isDerviedCYK(std::string w) const;
 
 private:
     std::set<char> variables_;
@@ -35,11 +34,12 @@ private:
     std::map<char, std::set<std::string>> rules_;
 
     void addStartVariable();
-    void breakLongRules();
     std::set<std::string> getAllOccurences(std::string rhs, const std::set<char> &targets);
     void getAllOcurrencesRecursive(const std::string &str, const std::set<char> &targets, int index, std::string current, std::set<std::string> &results);
-    void breakLongRules();
     char freshVariable();
+    void eliminateUnitRules();
+    void eliminateEpsilonRules();
+    void breakLongRules();
     bool isTerminal(char c) const;
     bool isVariable(char c) const;
 };

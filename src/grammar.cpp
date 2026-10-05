@@ -24,6 +24,11 @@ const std::map<char, std::set<std::string>> &Grammar::rules() const
     return rules_;
 }
 
+char Grammar::startSymbol() const
+{
+    return start_;
+}
+
 // Epsilon is represented as '#' in text and as an empty string "" internally
 void Grammar::addRule(char lhs, const std::string &rhs)
 {
@@ -302,6 +307,12 @@ void Grammar::breakLongRules()
 
 Grammar Grammar::CNFConvert() const
 {
+    Grammar result = *this; // Copy the current grammar into a new object
+    result.addStartVariable();
+    result.eliminateEpsilonRules();
+    result.eliminateUnitRules();
+    result.breakLongRules();
+    return result;
 }
 
 // Helper methods to differentiate between terminals (lowercase) and variables (uppercase)
@@ -312,4 +323,49 @@ bool Grammar::isTerminal(char c) const
 bool Grammar::isVariable(char c) const
 {
     return (c < 'Z' && c > 'A');
+}
+
+bool Grammar::isDerviedCYK(std::string w) const
+{
+    if (w.length() == 0){
+        if (rules_.at(start_).count("") > 0)
+            return true;
+        else
+            return false;
+    }
+
+    int n = w.length();
+    std::vector<std::vector<int>> table(n, std::vector<int>(n, 0));
+
+    for (int i = 0; i < n; i++){
+        for (const auto &[variable, alternatives]: rules_){
+            if (alternatives.count(std::string(1, w[i])) > 0){
+                table[i][i] = variable;
+            }
+        }
+    }
+
+    for (int l = 1; l < n; l++){
+        for (int i = 0; i < n-l+1; i++){
+            int j = i+l-1;
+            for (int k = i; k < j-1; k++){
+                for (const auto &[variable, alternatives]: rules_){
+                    for (const auto &alternative: alternatives){
+                        if (alternative.length() == 2){
+                            if (table[i][k] == alternative[0] && table[k+1][j] == alternative[1]){
+                                table[i][j] = variable;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (table[1][n-1] == start_){
+        return true;
+    }
+    return false;
+
+
 }
