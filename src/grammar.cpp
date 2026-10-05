@@ -289,7 +289,7 @@ void Grammar::breakLongRules()
             if (k >= 3)
             {
                 char lhsVariable = lhs;            // Assign variables of the new rule
-                for (size_t i = 0; i < k - 2; ++i) // Iterate over the long rule to break them down
+                for (size_t i = 0; i < static_cast<size_t>(k - 2); ++i) // Iterate over the long rule to break them down
                 {
                     char rhsVariable = freshVariable(); // Generate a new rhsVariable
                     rules_[lhsVariable].insert(std::string(1, cleaned[i]) + rhsVariable);
@@ -325,7 +325,7 @@ bool Grammar::isVariable(char c) const
     return (c < 'Z' && c > 'A');
 }
 
-bool Grammar::isDerviedCYK(std::string w) const
+bool Grammar::isDerivedCYK(std::string w) const
 {
     if (w.length() == 0){
         if (rules_.at(start_).count("") > 0)
@@ -335,37 +335,27 @@ bool Grammar::isDerviedCYK(std::string w) const
     }
 
     int n = w.length();
-    std::vector<std::vector<int>> table(n, std::vector<int>(n, 0));
+    std::vector<std::vector<std::set<char>>> table(n, std::vector<std::set<char>>(n));
 
-    for (int i = 0; i < n; i++){
-        for (const auto &[variable, alternatives]: rules_){
-            if (alternatives.count(std::string(1, w[i])) > 0){
-                table[i][i] = variable;
-            }
-        }
-    }
-
-    for (int l = 1; l < n; l++){
-        for (int i = 0; i < n-l+1; i++){
+    for (int i = 0; i < n; i++)
+        for (auto &[variable, alternatives]: rules_)
+            // Check if there's A->b and b=w[i]
+            if (alternatives.count(std::string(1, w[i])) != 0) table[i][i].insert(variable);
+    
+    for (int l = 2; l <= n; l++)
+        for (int i = 0; i <= n-l; i++)
+        {
             int j = i+l-1;
-            for (int k = i; k < j-1; k++){
-                for (const auto &[variable, alternatives]: rules_){
-                    for (const auto &alternative: alternatives){
-                        if (alternative.length() == 2){
-                            if (table[i][k] == alternative[0] && table[k+1][j] == alternative[1]){
-                                table[i][j] = variable;
-                            }
-                        }
-                    }
-                }
-            }
+            for (int k = i; k <= j-1; k++)
+                for (const auto &[variable, alternatives]: rules_) // For each rule A->BC
+                    for (const auto &alternative: alternatives)
+                        if (alternative.length() == 2 // Check that the rule is BC, not a terminal
+                            && table[i][k].count(alternative[0]) != 0  // If [i][k] contains B
+                            && table[k+1][j].count(alternative[1]) != 0) // and [k+1][j] contains C
+                                table[i][j].insert(variable);             // Put A in cell [i][j]                  
         }
-    }
 
-    if (table[1][n-1] == start_){
-        return true;
-    }
-    return false;
 
+    return table[0][n-1].count(start_) != 0;
 
 }

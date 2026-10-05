@@ -25,7 +25,7 @@ public:
     const std::map<char, std::set<std::string>> &rules() const;
 
     Grammar CNFConvert() const;
-    bool isDerviedCYK(std::string w) const;
+    bool isDerivedCYK(std::string w) const;
 
 private:
     std::set<char> variables_;
