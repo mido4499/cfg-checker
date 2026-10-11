@@ -1,5 +1,10 @@
 #include "grammar.hpp"
 #include <string>
+#include <vector>
+#include <iostream>
+#include <iomanip>
+#include <algorithm>
+using namespace std;
 
 Grammar::Grammar(std::set<char> variables, std::set<char> terminals, char start)
     : variables_(std::move(variables)), terminals_(std::move(terminals)), start_(start)
@@ -288,7 +293,7 @@ void Grammar::breakLongRules()
             int k = cleaned.length();
             if (k >= 3)
             {
-                char lhsVariable = lhs;            // Assign variables of the new rule
+                char lhsVariable = lhs;                                 // Assign variables of the new rule
                 for (size_t i = 0; i < static_cast<size_t>(k - 2); ++i) // Iterate over the long rule to break them down
                 {
                     char rhsVariable = freshVariable(); // Generate a new rhsVariable
@@ -318,16 +323,17 @@ Grammar Grammar::CNFConvert() const
 // Helper methods to differentiate between terminals (lowercase) and variables (uppercase)
 bool Grammar::isTerminal(char c) const
 {
-    return (c < 'z' && c > 'a');
+    return (c <= 'z' && c >= 'a');
 }
 bool Grammar::isVariable(char c) const
 {
-    return (c < 'Z' && c > 'A');
+    return (c <= 'Z' && c >= 'A');
 }
 
 bool Grammar::isDerivedCYK(std::string w) const
 {
-    if (w.length() == 0){
+    if (w.length() == 0)
+    {
         if (rules_.at(start_).count("") > 0)
             return true;
         else
@@ -338,24 +344,92 @@ bool Grammar::isDerivedCYK(std::string w) const
     std::vector<std::vector<std::set<char>>> table(n, std::vector<std::set<char>>(n));
 
     for (int i = 0; i < n; i++)
-        for (auto &[variable, alternatives]: rules_)
+        for (auto &[variable, alternatives] : rules_)
             // Check if there's A->b and b=w[i]
-            if (alternatives.count(std::string(1, w[i])) != 0) table[i][i].insert(variable);
-    
+            if (alternatives.count(std::string(1, w[i])) != 0)
+                table[i][i].insert(variable);
+
     for (int l = 2; l <= n; l++)
-        for (int i = 0; i <= n-l; i++)
+        for (int i = 0; i <= n - l; i++)
         {
-            int j = i+l-1;
-            for (int k = i; k <= j-1; k++)
-                for (const auto &[variable, alternatives]: rules_) // For each rule A->BC
-                    for (const auto &alternative: alternatives)
-                        if (alternative.length() == 2 // Check that the rule is BC, not a terminal
-                            && table[i][k].count(alternative[0]) != 0  // If [i][k] contains B
-                            && table[k+1][j].count(alternative[1]) != 0) // and [k+1][j] contains C
-                                table[i][j].insert(variable);             // Put A in cell [i][j]                  
+            int j = i + l - 1;
+            for (int k = i; k <= j - 1; k++)
+                for (const auto &[variable, alternatives] : rules_) // For each rule A->BC
+                    for (const auto &alternative : alternatives)
+                        if (alternative.length() == 2                      // Check that the rule is BC, not a terminal
+                            && table[i][k].count(alternative[0]) != 0      // If [i][k] contains B
+                            && table[k + 1][j].count(alternative[1]) != 0) // and [k+1][j] contains C
+                            table[i][j].insert(variable);                  // Put A in cell [i][j]
         }
 
+    return table[0][n - 1].count(start_) != 0;
+}
 
-    return table[0][n-1].count(start_) != 0;
+void Grammar::displayCYK(std::vector<std::vector<std::set<char>>> table)
+{
+    int width = 0;
+    std::cout << "\n\n";
 
+    for (size_t row = 0; row < table.size(); row++)
+    {
+        for (size_t col = 0; col < table[row].size(); col++)
+        {
+            std::string setString = setToString(table[row][col]);
+            width = max(width, (int)setString.length());
+        }
+    }
+
+    width += 2; // for padding
+
+    for (size_t r = 0; r < table.size(); r++)
+    {
+        for (size_t c = 0; c < table[r].size(); c++)
+        {
+            std::cout << left << setw(width) << setToString(table[r][c]);
+        }
+        std::cout << '\n';
+    }
+}
+std::string Grammar::setToString(std::set<char> inSet) const
+{
+    if (inSet.size() == 0)
+        return "__";
+    std::string result;
+
+    for (auto const &character : inSet)
+    {
+        if (!result.empty())
+        {
+            result += ", ";
+        }
+
+        if (character == ' ')
+        {
+            result += '#';
+            continue;
+        }
+        result += character;
+    }
+
+    return result;
+}
+
+void Grammar::display()
+{
+    std::cout << "Start variable: " << start_ << '\n';
+    std::cout << "RULES: " << '\n';
+    for (auto const &pair : rules_)
+    {
+        std::cout << pair.first << " -> ";
+        for (auto const &alternative : pair.second)
+        {
+            if (alternative == "")
+                std::cout << '#';
+            else
+                std::cout << alternative;
+
+            std::cout << " | ";
+        }
+        std::cout << '\n';
+    }
 }

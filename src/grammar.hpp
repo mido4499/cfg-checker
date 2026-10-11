@@ -26,6 +26,8 @@ public:
 
     Grammar CNFConvert() const;
     bool isDerivedCYK(std::string w) const;
+    void displayCYK(std::vector<std::vector<std::set<char>>> table);
+    void display();
 
 private:
     std::set<char> variables_;
@@ -33,6 +35,7 @@ private:
     char start_;
     std::map<char, std::set<std::string>> rules_;
 
+    std::string setToString(std::set<char> inSet) const;
     void addStartVariable();
     std::set<std::string> getAllOccurences(std::string rhs, const std::set<char> &targets);
     void getAllOcurrencesRecursive(const std::string &str, const std::set<char> &targets, int index, std::string current, std::set<std::string> &results);
