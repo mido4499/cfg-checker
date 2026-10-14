@@ -63,9 +63,34 @@ void testCNFConvert()
     printRules(cnf);
     printStartVariable(cnf);
 }
+
+void testCYK()
+{
+    Grammar g({'S', 'A', 'B', 'C', 'D'}, {'a', 'b'}, 'S');
+    g.addRule('S', "AB");
+    g.addRule('S', "AC");
+    g.addRule('A', "a");
+    g.addRule('B', "b");
+    g.addRule('C', "SB");
+    g.addRule('D', "b");
+    std::cout << std::boolalpha;
+    std::cout << g.isDerivedCYK("ab") << '\n';
+    std::cout << g.isDerivedCYK("aabb") << '\n';
+    std::cout << g.isDerivedCYK("aaabbb") << '\n';
+    std::cout << g.isDerivedCYK("a") << '\n';
+    std::cout << g.isDerivedCYK("b") << '\n';
+    std::cout << g.isDerivedCYK("ba") << '\n';
+    std::cout << g.isDerivedCYK("aabbb") << '\n';
+    std::cout << g.isDerivedCYK("aaabb") << '\n';
+    std::cout << g.isDerivedCYK("") << '\n';
+
+
+
+}
+
 int main()
 {
-    testCNFConvert();
+    testCYK();
 }
 
 /*
