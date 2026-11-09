@@ -101,14 +101,12 @@ void Grammar::eliminateEpsilonRules()
     {
         changedSomething = false;
         // First step: eliminate the epsilon rules and keep track of the variables that had these rules
-        std::set<char> removed; // To keep track of the removed unit epsilon rules and avoid adding them again
         for (auto &[key, inner_set] : rules_)
         {
             if (key != start_ && inner_set.erase("") > 0) // Only remove the epsilon rules
             {
                 changedSomething = true;
                 nullableVariables.insert(key);
-                removed.insert(key);
             }
         }
 
@@ -122,9 +120,6 @@ void Grammar::eliminateEpsilonRules()
         {
             for (const std::string &rhs : inner_set)
             {
-                if (rhs.length() == 1 && nullableVariables.count(rhs[0]) != 0 && removed.count(lhs) != 0) // Avoids adding unit epsilon rules that were already removed
-                    continue;
-
                 std::set<char> targetsInRule; // A set to collect all of the nullable variables in a single rule
                 for (char c : rhs)
                     if (nullableVariables.count(c) != 0)
@@ -134,6 +129,7 @@ void Grammar::eliminateEpsilonRules()
                     continue;
 
                 std::set<std::string> addedRhs = getAllOccurences(rhs, targetsInRule);
+                if (nullableVariables.count(lhs)) addedRhs.erase("");
                 additions[lhs].insert(addedRhs.begin(), addedRhs.end());
             }
         }
@@ -330,18 +326,19 @@ bool Grammar::isVariable(char c) const
     return (c <= 'Z' && c >= 'A');
 }
 
-bool Grammar::isDerivedCYK(std::string w) const
+std::pair<std::vector<std::vector<std::set<char>>> , bool> Grammar::isDerivedCYK(std::string w) const
 {
     if (w.length() == 0)
     {
         if (rules_.at(start_).count("") > 0)
-            return true;
+            return {{}, true};
         else
-            return false;
+            return {{}, false};
     }
 
     int n = w.length();
     std::vector<std::vector<std::set<char>>> table(n, std::vector<std::set<char>>(n));
+    std::pair<std::vector<std::vector<std::set<char>>> , bool> ret;
 
     for (int i = 0; i < n; i++)
         for (auto &[variable, alternatives] : rules_)
@@ -362,13 +359,15 @@ bool Grammar::isDerivedCYK(std::string w) const
                             table[i][j].insert(variable);                  // Put A in cell [i][j]
         }
 
-    return table[0][n - 1].count(start_) != 0;
+    ret.first = table;
+    ret.second = table[0][n - 1].count(start_) != 0;
+    return ret;
 }
 
 void Grammar::displayCYK(std::vector<std::vector<std::set<char>>> table)
 {
     int width = 0;
-    std::cout << "\n\n";
+    std::cout << "\n\nCYK TABLE:\n";
 
     for (size_t row = 0; row < table.size(); row++)
     {
@@ -389,6 +388,7 @@ void Grammar::displayCYK(std::vector<std::vector<std::set<char>>> table)
         }
         std::cout << '\n';
     }
+    std::cout << '\n';
 }
 std::string Grammar::setToString(std::set<char> inSet) const
 {
@@ -420,15 +420,19 @@ void Grammar::display()
     std::cout << "RULES: " << '\n';
     for (auto const &pair : rules_)
     {
+        bool isFirstAlt = true;
         std::cout << pair.first << " -> ";
         for (auto const &alternative : pair.second)
         {
+            if (!isFirstAlt){
+                std::cout << " | ";
+            }
             if (alternative == "")
                 std::cout << '#';
             else
                 std::cout << alternative;
-
-            std::cout << " | ";
+            isFirstAlt = false;
+            
         }
         std::cout << '\n';
     }

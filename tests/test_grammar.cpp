@@ -74,15 +74,15 @@ void testCYK()
     g.addRule('C', "SB");
     g.addRule('D', "b");
     std::cout << std::boolalpha;
-    std::cout << g.isDerivedCYK("ab") << '\n';
-    std::cout << g.isDerivedCYK("aabb") << '\n';
-    std::cout << g.isDerivedCYK("aaabbb") << '\n';
-    std::cout << g.isDerivedCYK("a") << '\n';
-    std::cout << g.isDerivedCYK("b") << '\n';
-    std::cout << g.isDerivedCYK("ba") << '\n';
-    std::cout << g.isDerivedCYK("aabbb") << '\n';
-    std::cout << g.isDerivedCYK("aaabb") << '\n';
-    std::cout << g.isDerivedCYK("") << '\n';
+    std::cout << g.isDerivedCYK("ab").second << '\n';
+    std::cout << g.isDerivedCYK("aabb").second << '\n';
+    std::cout << g.isDerivedCYK("aaabbb").second << '\n';
+    std::cout << g.isDerivedCYK("a").second << '\n';
+    std::cout << g.isDerivedCYK("b").second << '\n';
+    std::cout << g.isDerivedCYK("ba").second << '\n';
+    std::cout << g.isDerivedCYK("aabbb").second << '\n';
+    std::cout << g.isDerivedCYK("aaabb").second << '\n';
+    std::cout << g.isDerivedCYK("").second << '\n';
 
 
 
